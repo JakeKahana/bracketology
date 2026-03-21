@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bracketology</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: rgba(255,255,255,0.08);
+    --border-hover: rgba(255,255,255,0.18);
+    --accent: #f0c040;
+    --accent2: #e05a30;
+    --text: #f0ede8;
+    --muted: rgba(240,237,232,0.45);
+    --win: #3bb06a;
+    --lose: rgba(240,237,232,0.15);
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --r: 6px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: auto;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 36px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .logo span { color: var(--accent2); }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+    margin: 0 24px;
+  }
+
+  .topic-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 8px 14px;
+    border-radius: var(--r);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.2s;
+  }
+  .topic-input::placeholder { color: var(--muted); }
+  .topic-input:focus { border-color: var(--accent); }
+
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #0a0a0f; border-color: var(--accent); font-weight: 600; }
+  .btn.primary:hover { background: #f5d060; border-color: #f5d060; color: #0a0a0f; }
+  .btn.danger { border-color: rgba(224,90,48,0.4); color: var(--muted); }
+  .btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+  .round-label {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+
+  /* ── Status bar ── */
+  .statusbar {
+    padding: 10px 32px;
+    font-size: 13px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .statusbar .topic-tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── Loading overlay ── */
+  .loading-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: var(--font-display);
+    font-size: 24px;
+    letter-spacing: 1px;
+    color: var(--accent);
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 80px 32px;
+    text-align: center;
+  }
+  .empty-icon {
+    font-size: 64px;
+    line-height: 1;
+    opacity: 0.3;
+  }
+  .empty-state h2 {
+    font-family: var(--font-display);
+    font-size: 42px;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+  .empty-state p { font-size: 15px; color: var(--muted); max-width: 400px; line-height: 1.6; }
+  .empty-suggestions {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px;
+  }
+  .suggestion-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .suggestion-pill:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Bracket layout ── */
+  .bracket-wrapper {
+    padding: 24px 32px 40px;
+    overflow-x: auto;
+  }
+
+  .bracket-scroll {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    min-width: max-content;
+  }
+
+  .round-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .round-header {
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    padding: 0 8px 12px;
+    text-align: center;
+    min-width: 185px;
+  }
+
+  .round-matches {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .match-slot {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    padding: 6px 8px;
+    position: relative;
+  }
+
+  /* connector lines */
+  .match-slot::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 8px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .round-col:last-child .match-slot::after { display: none; }
+
+  .match-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+
+  /* ── Team button with image ── */
+  .team-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 400;
+    padding: 6px 10px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.3;
+    min-height: 44px;
+  }
+  .team-btn:last-child { border-bottom: none; }
+
+  .team-btn:not(.empty):not(.winner):not(.loser):hover {
+    background: var(--surface2);
+    color: var(--accent);
+  }
+
+  .team-btn.winner {
+    background: rgba(59,176,106,0.12);
+    color: var(--win);
+    font-weight: 500;
+  }
+
+  .team-btn.loser {
+    color: var(--lose);
+    background: none;
+    cursor: default;
+  }
+
+  .team-btn.empty {
+    color: var(--muted);
+    opacity: 0.4;
+    cursor: default;
+    font-style: italic;
+  }
+
+  .team-btn.champion {
+    background: rgba(240,192,64,0.15);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  /* ── Entry image thumbnail ── */
+  .team-img {
+    width: 120px;
+    height: 120px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--surface2);
+  }
+  .team-img-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    color: var(--muted);
+    font-family: var(--font-display);
+    letter-spacing: 0;
+  }
+  .team-btn.loser .team-img,
+  .team-btn.loser .team-img-placeholder { opacity: 0.3; }
+
+  .team-name { flex: 1; min-width: 0; }
+
+  /* ── Champion display ── */
+  .champion-banner {
+    display: none;
+    text-align: center;
+    padding: 32px;
+    border-top: 1px solid var(--border);
+  }
+  .champion-banner.active { display: block; }
+  .champion-banner h3 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .champion-name {
+    font-family: var(--font-display);
+    font-size: 56px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .trophy { font-size: 40px; margin-bottom: 8px; }
+
+  /* ── Winner modal ── */
+  .winner-modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(10,10,15,0.7);
+    align-items: center; justify-content: center;
+  }
+  .winner-modal.active { display: flex; }
+  .winner-modal-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    animation: popIn 0.25s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .winner-modal-inner .label {
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .winner-modal-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin: 0 auto 16px;
+    display: block;
+    border: 2px solid var(--border);
+  }
+  .winner-modal-inner .name {
+    font-family: var(--font-display);
+    font-size: 48px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    line-height: 1.1;
+    margin-bottom: 24px;
+  }
+  .winner-modal-inner .sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Bracket<span>ology</span></div>
+  <div class="controls">
+    <input class="topic-input" type="text" id="topicInput" placeholder="e.g. Dog Breeds, Pasta Types…" />
+    <button class="btn primary" onclick="generateBracket()">Generate</button>
+    <button class="btn" onclick="randomTopic()">🎲 Random Topic</button>
+    <button class="btn danger" onclick="clearBracket()">Clear</button>
+    <button class="btn" onclick="exportPDF()" id="exportBtn" disabled>Save PDF</button>
+  </div>
+  <div class="round-label" id="roundLabel"></div>
+</div>
+
+<div class="statusbar" id="statusbar" style="display:none">
+  <span id="topicTag" class="topic-tag"></span>
+  <span id="progressText"></span>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Generating bracket…</div>
+</div>
+
+<div class="winner-modal" id="winnerModal">
+  <div class="winner-modal-inner">
+    <div class="label">advancing</div>
+    <img class="winner-modal-img" id="winnerModalImg" src="" alt="" style="display:none" />
+    <div class="name" id="winnerName"></div>
+    <div class="sub" id="winnerSub"></div>
+    <button class="btn primary" onclick="closeModal()">Continue →</button>
+  </div>
+</div>
+
+<div id="emptyState" class="empty-state">
+  <div class="empty-icon">🏆</div>
+  <h2>Build Your Bracket</h2>
+  <p>Enter a topic above and hit Generate, or try one of these:</p>
+  <div class="empty-suggestions">
+    <button class="suggestion-pill" onclick="quickTopic('Dog Breeds')">Dog Breeds</button>
+    <button class="suggestion-pill" onclick="quickTopic('Pasta Types')">Pasta Types</button>
+    <button class="suggestion-pill" onclick="quickTopic('Countries to Visit')">Countries to Visit</button>
+    <button class="suggestion-pill" onclick="quickTopic('90s TV Shows')">90s TV Shows</button>
+    <button class="suggestion-pill" onclick="quickTopic('Pizza Toppings')">Pizza Toppings</button>
+    <button class="suggestion-pill" onclick="quickTopic('Superhero Movies')">Superhero Movies</button>
+    <button class="suggestion-pill" onclick="quickTopic('Board Games')">Board Games</button>
+    <button class="suggestion-pill" onclick="quickTopic('Cheeses')">Cheeses</button>
+  </div>
+</div>
+
+<div id="bracketArea" style="display:none">
+  <div class="bracket-wrapper">
+    <div class="bracket-scroll" id="bracketScroll"></div>
+  </div>
+  <div class="champion-banner" id="championBanner">
+    <div class="trophy">🏆</div>
+    <h3>CHAMPION</h3>
+    <div class="champion-name" id="championName"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+// ── State ──
+let state = {
+  topic: '',
+  items: [],      // 32 items
+  images: {},     // item name → image URL (or null)
+  rounds: [],     // rounds[r][m] = { a, b, winner }
+  currentRound: 0
+};
+
+const RANDOM_TOPICS = [
+  'Ice Cream Flavors','World Cuisines','Animated Movies','Musical Instruments',
+  'Olympic Sports','Classic Video Games','Cocktails','Hiking Destinations',
+  'Coffee Drinks','Famous Painters','Rock Bands','Space Phenomena',
+  'Mythological Creatures','Card Games','Spices & Herbs','Architecture Styles',
+  'Roller Coasters','Street Foods','Martial Arts','Renaissance Artists',
+  'Breakfast Foods','Lakes of the World','Jazz Musicians','Fantasy Creatures',
+  'Hot Sauces','Car Brands','Islands to Visit','Classic Novels',
+  'Yoga Poses','Dinosaurs','Cocktail Garnishes','Shakespeare Plays'
+];
+
+const ROUND_NAMES = ['Round of 32','Round of 16','Quarterfinals','Semifinals','Final','Champion'];
+
+// ── API: Claude ──
+async function callClaude(prompt) {
+  const resp = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.content[0].text;
+}
+
+// ── API: Wikipedia images ──
+async function fetchItemImage(item) {
+  try {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(item)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data.thumbnail?.source || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAllImages(items) {
+  const results = await Promise.all(items.map(item => fetchItemImage(item)));
+  items.forEach((item, i) => {
+    state.images[item] = results[i] || null;
+  });
+}
+
+// ── Image element helpers ──
+function makeImageEl(name, size = 32) {
+  const url = state.images[name];
+  if (url) {
+    const img = document.createElement('img');
+    img.className = 'team-img';
+    img.src = url;
+    img.alt = name;
+    img.width = size;
+    img.height = size;
+    img.style.width = size + 'px';
+    img.style.height = size + 'px';
+    img.onerror = () => {
+      // swap to placeholder on error
+      const ph = makePlaceholderEl(name, size);
+      img.replaceWith(ph);
+    };
+    return img;
+  } else {
+    return makePlaceholderEl(name, size);
+  }
+}
+
+function makePlaceholderEl(name, size = 32) {
+  const ph = document.createElement('div');
+  ph.className = 'team-img-placeholder';
+  ph.style.width = size + 'px';
+  ph.style.height = size + 'px';
+  ph.style.fontSize = Math.round(size * 0.45) + 'px';
+  ph.textContent = name.charAt(0).toUpperCase();
+  return ph;
+}
+
+// ── Bracket Logic ──
+function initBracket(items) {
+  state.rounds = [];
+  const r0 = [];
+  for (let i = 0; i < 32; i += 2) {
+    r0.push({ a: items[i], b: items[i+1], winner: null });
+  }
+  state.rounds.push(r0);
+  for (let r = 1; r <= 4; r++) {
+    const matchCount = Math.pow(2, 4 - r);
+    const round = [];
+    for (let m = 0; m < matchCount; m++) {
+      round.push({ a: null, b: null, winner: null });
+    }
+    state.rounds.push(round);
+  }
+  state.currentRound = 0;
+}
+
+function pickWinner(roundIdx, matchIdx, side) {
+  const match = state.rounds[roundIdx][matchIdx];
+  if (match.winner) return;
+  const winner = side === 'a' ? match.a : match.b;
+  const loser  = side === 'a' ? match.b : match.a;
+  match.winner = winner;
+
+  const nextR = roundIdx + 1;
+  if (nextR < state.rounds.length) {
+    const nextMatch = Math.floor(matchIdx / 2);
+    const nextSlot  = matchIdx % 2 === 0 ? 'a' : 'b';
+    state.rounds[nextR][nextMatch][nextSlot] = winner;
+  }
+
+  const roundDone = state.rounds[roundIdx].every(m => m.winner !== null);
+  if (roundDone && nextR < state.rounds.length) {
+    state.currentRound = nextR;
+  }
+
+  showWinnerModal(winner, roundIdx);
+
+  if (roundIdx === 4) {
+    setTimeout(() => {
+      document.getElementById('championBanner').classList.add('active');
+      document.getElementById('championName').textContent = winner;
+    }, 600);
+  }
+
+  render();
+}
+
+// ── Render ──
+function render() {
+  const scroll = document.getElementById('bracketScroll');
+  scroll.innerHTML = '';
+
+  const totalRounds = 5;
+  for (let r = 0; r < totalRounds; r++) {
+    const col = document.createElement('div');
+    col.className = 'round-col';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'round-header';
+    hdr.textContent = ROUND_NAMES[r];
+    col.appendChild(hdr);
+
+    const matchesDiv = document.createElement('div');
+    matchesDiv.className = 'round-matches';
+    matchesDiv.style.display = 'flex';
+    matchesDiv.style.flexDirection = 'column';
+    matchesDiv.style.flex = '1';
+
+    const matches = state.rounds[r];
+    matches.forEach((match, mIdx) => {
+      const slot = document.createElement('div');
+      slot.className = 'match-slot';
+      const multiplier = Math.pow(2, r);
+      slot.style.minHeight = (80 * multiplier) + 'px';
+
+      const card = document.createElement('div');
+      card.className = 'match-card';
+      card.style.minWidth = '260px';
+      card.style.maxWidth = '260px';
+
+      [['a', match.a], ['b', match.b]].forEach(([side, name]) => {
+        const btn = document.createElement('button');
+        btn.className = 'team-btn';
+
+        if (!name) {
+          btn.className += ' empty';
+          btn.textContent = 'TBD';
+          btn.disabled = true;
+        } else {
+          // Image thumbnail
+          const imgEl = makeImageEl(name, 120);
+          btn.appendChild(imgEl);
+
+          // Name
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'team-name';
+          nameSpan.textContent = name;
+          btn.appendChild(nameSpan);
+
+          if (match.winner) {
+            btn.className += match.winner === name ? ' winner' : ' loser';
+            btn.disabled = true;
+          } else {
+            btn.onclick = () => pickWinner(r, mIdx, side);
+          }
+        }
+
+        card.appendChild(btn);
+      });
+
+      slot.appendChild(card);
+      matchesDiv.appendChild(slot);
+    });
+
+    col.appendChild(matchesDiv);
+    scroll.appendChild(col);
+  }
+
+  updateStatus();
+}
+
+function updateStatus() {
+  const r = state.currentRound;
+  const match = state.rounds[r];
+  const done = match.filter(m => m.winner).length;
+  document.getElementById('topicTag').textContent = state.topic;
+  document.getElementById('progressText').textContent =
+    `${ROUND_NAMES[r]} · ${done}/${match.length} matches complete`;
+  document.getElementById('roundLabel').textContent = ROUND_NAMES[r];
+  document.getElementById('exportBtn').disabled = false;
+}
+
+// ── Winner Modal ──
+function showWinnerModal(name, roundIdx) {
+  document.getElementById('winnerName').textContent = name;
+  const isLast = roundIdx === 4;
+  document.getElementById('winnerSub').textContent = isLast
+    ? '🏆 Champion!'
+    : `Advances to the ${ROUND_NAMES[roundIdx + 1]}`;
+
+  // Show image in modal if available
+  const modalImg = document.getElementById('winnerModalImg');
+  const imgUrl = state.images[name];
+  if (imgUrl) {
+    modalImg.src = imgUrl;
+    modalImg.alt = name;
+    modalImg.style.display = 'block';
+  } else {
+    modalImg.style.display = 'none';
+  }
+
+  document.getElementById('winnerModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('winnerModal').classList.remove('active');
+}
+
+// ── Generate ──
+async function generateBracket(topic) {
+  const inputTopic = topic || document.getElementById('topicInput').value.trim();
+  if (!inputTopic) { alert('Please enter a topic first!'); return; }
+
+  showLoading(`Building ${inputTopic} bracket…`);
+
+  try {
+    const raw = await callClaude(
+      `Generate exactly 32 unique, well-known items for the topic: "${inputTopic}".
+      Return ONLY a JSON array of 32 strings, nothing else. No markdown, no explanation.
+      Make them diverse, interesting, and recognizable. Example format: ["Item 1","Item 2",...]`
+    );
+
+    let items;
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      items = JSON.parse(clean);
+    } catch(e) {
+      items = [...raw.matchAll(/"([^"]+)"/g)].map(m => m[1]).slice(0, 32);
+    }
+
+    if (!items || items.length < 32) throw new Error('Not enough items');
+    items = items.slice(0, 32);
+
+    state.topic = inputTopic;
+    state.items = items;
+    state.images = {};
+
+    // Fetch images for all items
+    showLoading(`Fetching images…`);
+    await fetchAllImages(items);
+
+    initBracket(items);
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('bracketArea').style.display = 'block';
+    document.getElementById('statusbar').style.display = 'flex';
+    document.getElementById('championBanner').classList.remove('active');
+
+    render();
+    hideLoading();
+  } catch(err) {
+    hideLoading();
+    alert('Error generating bracket. Please try again.');
+    console.error(err);
+  }
+}
+
+function randomTopic() {
+  const t = RANDOM_TOPICS[Math.floor(Math.random() * RANDOM_TOPICS.length)];
+  document.getElementById('topicInput').value = t;
+  generateBracket(t);
+}
+
+function quickTopic(t) {
+  document.getElementById('topicInput').value = t;
+  generateBracket(t);
+}
+
+function clearBracket() {
+  state = { topic: '', items: [], images: {}, rounds: [], currentRound: 0 };
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('bracketArea').style.display = 'none';
+  document.getElementById('statusbar').style.display = 'none';
+  document.getElementById('topicInput').value = '';
+  document.getElementById('roundLabel').textContent = '';
+  document.getElementById('exportBtn').disabled = true;
+}
+
+// ── Loading ──
+function showLoading(msg) {
+  document.getElementById('loadingText').textContent = msg || 'Loading…';
+  document.getElementById('loadingOverlay').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+// ── Export ──
+async function exportPDF() {
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+
+  try {
+    const el = document.getElementById('bracketArea');
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#0a0a0f',
+      scale: 1.5,
+      useCORS: true,
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
+    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+    pdf.save(`bracketology-${state.topic.toLowerCase().replace(/\s+/g,'-')}.pdf`);
+  } catch(e) {
+    alert('Export failed. Try right-clicking to screenshot instead.');
+    console.error(e);
+  }
+
+  btn.textContent = 'Save PDF';
+  btn.disabled = false;
+}
+
+// Enter key on input
+document.getElementById('topicInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generateBracket();
+});
+</script>
+</body>
+</html>
