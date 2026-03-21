@@ -772,7 +772,7 @@ async function generateBracket(topic) {
     hideLoading();
   } catch(err) {
     hideLoading();
-    alert('Error generating bracket. Please try again.');
+    alert('Error: ' + (err.message || err));
     console.error(err);
   }
 }
