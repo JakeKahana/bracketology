@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "framework": null,
+  "builds": [
+    { "src": "bracketology.html", "use": "@vercel/static" },
+    { "src": "api/generate.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/generate", "dest": "/api/generate.js" },
+    { "src": "/(.*)", "dest": "/bracketology.html" }
+  ]
+}
